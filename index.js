@@ -56,9 +56,10 @@ server.listen(PORT, () => {
   console.log(`✅ Socket server çalışıyor: http://localhost:${PORT}`);
 });
 let viewerCount = 0;
-const viewers = {}; // Socket ID'ye göre isimleri tutar
+// Kullanıcılar tutulacak
+const viewers = {};
 
-io.on("connection", socket => {
+io.on("connection", (socket) => {
   console.log("Yeni bağlantı:", socket.id);
 
   socket.on("join", ({ room, name }) => {
@@ -76,31 +77,24 @@ io.on("connection", socket => {
       message: `${name} yayına katıldı 👋`,
     });
 
-    // O anki izleyici sayısını gönder
+    // Odaya özel izleyici sayısını hesapla ve gönder
     const count = Object.values(viewers).filter(v => v.room === room).length;
-    io.in(room).emit("viewer-count", count);
+    io.to(room).emit("viewer-count", count);
   });
 
   socket.on("disconnect", () => {
     const viewer = viewers[socket.id];
-
     if (viewer) {
-      const { room, name } = viewer;
+      const { room } = viewer;
       delete viewers[socket.id];
 
-      // Kullanıcı ayrıldı mesajı
-      io.to(room).emit("chat-message", {
-        sender: "Sistem",
-        message: `${name} yayından ayrıldı 👋`,
-      });
-
-      // İzleyici sayısını güncelle
+      // Güncel izleyici sayısını yay
       const count = Object.values(viewers).filter(v => v.room === room).length;
-      io.in(room).emit("viewer-count", count);
+      io.to(room).emit("viewer-count", count);
     }
 
-    console.log("Ayrıldı:", socket.id);
+    console.log("Bağlantı kapandı:", socket.id);
   });
 
-  // Diğer socket eventlerin (offer, answer, ice-candidate, chat-message) burada devam edebilir.
+  // Diğer socket.on işlemleri burada devam eder...
 });
