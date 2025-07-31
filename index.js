@@ -6,7 +6,15 @@ const cors = require("cors");
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
-  cors: { origin: "*" }
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Basit bir kontrol için root endpoint
+app.get("/", (req, res) => {
+  res.send("🟢 Yayın Backend Aktif");
 });
 
 io.on("connection", socket => {
@@ -32,10 +40,9 @@ io.on("connection", socket => {
     });
   });
 
-  // ✅ CHAT mesajını burada dinle!
   socket.on("chat-message", (data) => {
-    console.log("Gelen mesaj:", data);
-    io.emit("chat-message", data); // herkese gönder
+    console.log("💬 Gelen mesaj:", data);
+    io.to(data.room).emit("chat-message", data);
   });
 
   socket.on("disconnect", () => {
@@ -43,7 +50,8 @@ io.on("connection", socket => {
   });
 });
 
-server.listen(5000, () => {
-  console.log("Socket server running on http://localhost:5000");
+// 🌐 PORT ayarı (Render otomatik port sağlar)
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`✅ Socket server çalışıyor: http://localhost:${PORT}`);
 });
-
