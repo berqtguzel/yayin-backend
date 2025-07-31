@@ -55,3 +55,52 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`✅ Socket server çalışıyor: http://localhost:${PORT}`);
 });
+let viewerCount = 0;
+const viewers = {}; // Socket ID'ye göre isimleri tutar
+
+io.on("connection", socket => {
+  console.log("Yeni bağlantı:", socket.id);
+
+  socket.on("join", ({ room, name }) => {
+    socket.join(room);
+
+    // İzleyici listesine ekle
+    viewers[socket.id] = { room, name };
+
+    // Yayıncıya haber ver
+    socket.to(room).emit("user-joined", socket.id);
+
+    // Hoş geldin mesajı gönder
+    io.to(room).emit("chat-message", {
+      sender: "Sistem",
+      message: `${name} yayına katıldı 👋`,
+    });
+
+    // O anki izleyici sayısını gönder
+    const count = Object.values(viewers).filter(v => v.room === room).length;
+    io.in(room).emit("viewer-count", count);
+  });
+
+  socket.on("disconnect", () => {
+    const viewer = viewers[socket.id];
+
+    if (viewer) {
+      const { room, name } = viewer;
+      delete viewers[socket.id];
+
+      // Kullanıcı ayrıldı mesajı
+      io.to(room).emit("chat-message", {
+        sender: "Sistem",
+        message: `${name} yayından ayrıldı 👋`,
+      });
+
+      // İzleyici sayısını güncelle
+      const count = Object.values(viewers).filter(v => v.room === room).length;
+      io.in(room).emit("viewer-count", count);
+    }
+
+    console.log("Ayrıldı:", socket.id);
+  });
+
+  // Diğer socket eventlerin (offer, answer, ice-candidate, chat-message) burada devam edebilir.
+});
